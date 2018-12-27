@@ -24,18 +24,18 @@ int anylegalmove(int, int *);
 char nameof(int);
 int CountChessNumber(int, int *);
 void printboard(int *);
-int nexttoplay(int *, int, int);
+int nexttoplay(int *, int);
 int opponent(int);
-void othello(int (*)(int, int *), int (*)(int, int *), int);
-void getmove(int (*)(int, int *), int, int *, int);
+void othello(int (*)(int, int *), int (*)(int, int *));
+void getmove(int (*)(int, int *), int, int *);
 int human(int, int *);
 int AI(int, int *);
 int *initialboard(void);
 
 int main(void)
 {
-    //printflag用來是否要印出盤面，這裡預設都印出來,printflag=1
-    int HumanIsFirst = 0, printflag = 1;
+
+    int HumanIsFirst = 0;
     do
     {
         printf("您要先手請輸入1,否則輸入2:  ");
@@ -43,14 +43,14 @@ int main(void)
     } while (HumanIsFirst != 1 && HumanIsFirst != 2);
 
     if (HumanIsFirst == 1)
-        othello(human, AI, printflag);
+        othello(human, AI);
     else
-        othello(AI, human, printflag);
+        othello(AI, human);
 }
 
 //========================主要運作程式
 //下棋function
-void othello(int (*blstrategy)(int, int *), int (*whstrategy)(int, int *), int printflag)
+void othello(int (*blstrategy)(int, int *), int (*whstrategy)(int, int *))
 { //參數：黑方的function,白方的function,是否每回合要印出
     int *board;
     int player;
@@ -60,17 +60,14 @@ void othello(int (*blstrategy)(int, int *), int (*whstrategy)(int, int *), int p
     do
     {
         if (player == BLACK)
-            getmove(blstrategy, BLACK, board, printflag); //換黑子走的話
+            getmove(blstrategy, BLACK, board); //換黑子走的話
         else
-            getmove(whstrategy, WHITE, board, printflag); //換白子走
-        player = nexttoplay(board, player, printflag);
+            getmove(whstrategy, WHITE, board); //換白子走
+        player = nexttoplay(board, player);
     } while (player != 0); //終局盤面,player = 0
 
-    if (printflag)
-    {
-        printf("The game is over. Final result:\n");
-        printboard(board);
-    }
+    printf("The game is over. Final result:\n");
+    printboard(board);
 }
 //人類下棋
 int human(int player, int *board)
@@ -92,12 +89,10 @@ int AI(int player, int *board)
 
 //========================棋局規則相關
 //下子function, 下的strategy,player是誰,board,是否要印出
-void getmove(int (*strategy)(int, int *), int player, int *board,
-             int printflag)
+void getmove(int (*strategy)(int, int *), int player, int *board)
 {
     int move;
-    if (printflag)
-        printboard(board);
+    printboard(board);
     move = (*strategy)(player, board); //下子
 }
 
@@ -125,7 +120,7 @@ int *initialboard(void)
     return board;
 }
 //算下一個要玩的人是誰
-int nexttoplay(int *board, int Nowplayer, int printflag)
+int nexttoplay(int *board, int Nowplayer)
 {
     int NowOpp;
     NowOpp = opponent(Nowplayer); //換人下
@@ -133,8 +128,8 @@ int nexttoplay(int *board, int Nowplayer, int printflag)
         return NowOpp; //如果對方可以下，一定要給他下
     if (anylegalmove(Nowplayer, board))
     { //會到這裡表示對方不可以下，再換我下
-        if (printflag)
-            printf("%c has no moves and must pass.\n", nameof(NowOpp));
+
+        printf("%c has no moves and must pass.\n", nameof(NowOpp));
         return Nowplayer;
     }
     return 0; //沒人可以下，終局

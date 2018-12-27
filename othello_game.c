@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 /**************************************************
 *   border有做padding,所以變成10*10                 *
@@ -12,12 +13,12 @@
 #define BLACK 1
 #define WHITE 2
 #define OUTER 3
-//====================此處放置redundant code=====
 
-//=========================
 //-11:向左上（因為一排10個人） -10：向上 -9：右上
 const int ALLDIRECTIONS[8] = {-11, -10, -9, -1, 1, 9, 10, 11};
 
+void makemove(int, int, int *);
+int *FindAllMoves(int, int *);
 int wouldflip(int, int, int *, int);
 int LegalPosition(int, int, int *);
 int anylegalmove(int, int *);
@@ -32,9 +33,14 @@ int human(int, int *);
 int AI(int, int *);
 int *initialboard(void);
 
+//====================此處放置redundant code=====
+
+//=========================
+
 int main(void)
 {
 
+    srand(time(NULL));
     int HumanIsFirst = 0;
     do
     {
@@ -72,10 +78,13 @@ void othello(int (*blstrategy)(int, int *), int (*whstrategy)(int, int *))
 //人類下棋
 int human(int player, int *board)
 {
+
     int move;
     printf("your turn to move:");
     scanf("%d", &move);
     return move;
+
+    //AI(player,board);
 }
 //================================AI
 
@@ -83,8 +92,29 @@ int human(int player, int *board)
 //ai下棋
 int AI(int player, int *board)
 {
-    printf("AI move:\n");
-    return 0;
+    int r, *moves;
+    moves = FindAllMoves(player, board);
+    r = moves[(rand() % moves[0]) + 1];
+    free(moves);
+    return (r);
+}
+
+//把所有可以移動的位置找出來並存在return array moves中
+//其中moves[0]存全部有幾個位置可以移動
+int *FindAllMoves(int player, int *board)
+{
+    int move, i, *moves;
+    moves = (int *)malloc(65 * sizeof(int)); //最多就是64個可以移動的步
+    moves[0] = 0;
+    i = 0;
+    for (move = 11; move <= 88; move++)
+        if (LegalPosition(move, player, board))
+        {
+            i++;
+            moves[i] = move;
+        }
+    moves[0] = i; //0的位置存總共有幾個位置可以移動
+    return moves;
 }
 
 //========================棋局規則相關
@@ -94,6 +124,41 @@ void getmove(int (*strategy)(int, int *), int player, int *board)
     int move;
     printboard(board);
     move = (*strategy)(player, board); //下子
+    if (LegalPosition(move, player, board))
+    { //如果他下的是正常的子
+        printf("%c moves to %d\n", nameof(player), move);
+        makemove(move, player, board);
+    }
+    else //如果他下的不是正常的位置 重下
+    {
+        printf("Illegal move,please move again\n");
+        getmove(strategy, player, board);
+    }
+}
+//下子的動作,出來做function的原因是後面的AI有可能會用到試試看下子的動作
+//move代表下的位置，player代表下的人
+void makemove(int move, int player, int *board)
+{
+    int i;
+    board[move] = player;
+    //以我為邊界，總共有8個方向可以翻（move---o或o---move......）
+    for (i = 0; i <= 7; i++)
+    {
+
+        int FlipToPosition, c;
+        //wouldflip()會return要翻到哪個位置
+        FlipToPosition = wouldflip(move, player, board, ALLDIRECTIONS[i]);
+        if (FlipToPosition)
+        { //如果這個方向是可以翻的
+            //開始做翻的動作
+            c = move + ALLDIRECTIONS[i];
+            do
+            {
+                board[c] = player;
+                c = c + ALLDIRECTIONS[i];
+            } while (c != FlipToPosition);
+        }
+    }
 }
 
 //========================初始化和小功能
@@ -230,4 +295,5 @@ int wouldflip(int move, int player, int *board, int dir)
     else
         return 0;
 }
+
 //=============================

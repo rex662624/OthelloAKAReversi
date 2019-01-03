@@ -7,7 +7,8 @@
 *   border有做padding,所以變成10*10                 *
 *   empty地方用0 black方的棋子用1,white用2,牆壁用3    *
 **************************************************/
-
+#define WIN 2000
+#define LOSS -2000
 #define BOARDSIZE 100
 #define EMPTY 0
 #define BLACK 1
@@ -16,7 +17,9 @@
 
 //-11:向左上（因為一排10個人） -10：向上 -9：右上
 const int ALLDIRECTIONS[8] = {-11, -10, -9, -1, 1, 9, 10, 11};
-
+int NEWmaxchoice (int, int * , int , int (* evalfn) (int, int *),int alpha,int beta);
+int NEWminchoice (int, int * , int , int (* evalfn) (int, int *),int alpha,int beta);
+int NEWminmax (int player, int * board, int ply, int (* evalfn) (int, int *));
 void makemove(int, int, int *);
 int *FindAllMoves(int, int *);
 int wouldflip(int, int, int *, int);
@@ -25,14 +28,15 @@ int anylegalmove(int, int *);
 char nameof(int);
 int CountChessNumber(int, int *);
 void printboard(int *);
-int nexttoplay(int *, int);
+int nexttoplay(int *, int,int);
 int opponent(int);
 void othello(int (*)(int, int *), int (*)(int, int *));
 void getmove(int (*)(int, int *), int, int *);
 int human(int, int *);
 int AI(int, int *);
 int *initialboard(void);
-
+int * copyboard (int * board);
+int diffeval (int player, int * board);
 //====================此處放置redundant code=====
 
 //=========================
@@ -69,7 +73,7 @@ void othello(int (*blstrategy)(int, int *), int (*whstrategy)(int, int *))
             getmove(blstrategy, BLACK, board); //換黑子走的話
         else
             getmove(whstrategy, WHITE, board); //換白子走
-        player = nexttoplay(board, player);
+        player = nexttoplay(board, player,1);
     } while (player != 0); //終局盤面,player = 0
 
     printf("The game is over. Final result:\n");
@@ -87,16 +91,150 @@ int human(int player, int *board)
     //AI(player,board);
 }
 //================================AI
+int diffeval (int player, int * board) { /* utility is measured */
+  int i, ocnt, pcnt, opp;                /* by the difference in */
+  pcnt=0; ocnt = 0;                      /* number of pieces */
+  opp = opponent(player); 
+  for (i=1; i<=88; i++) {
+    if (board[i]==player) pcnt++;
+    if (board[i]==opp) ocnt++;
+  }
+  return (pcnt-ocnt);
+}
+
+int * copyboard (int * board) {
+  int i, * newboard;
+  newboard = (int *)malloc(BOARDSIZE * sizeof(int));
+  for (i=0; i<BOARDSIZE; i++) newboard[i] = board[i];
+  return newboard;
+}
+
+int weighteddiffeval (int player, int * board) {
+  int i, ocnt, pcnt, opp;
+  const int weights[100]={0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                          0,120,-20, 20,  5,  5, 20,-20,120,  0,
+                          0,-20,-40, -5, -5, -5, -5,-40,-20,  0,
+                          0, 20, -5, 15,  3,  3, 15, -5, 20,  0,
+                          0,  5, -5,  3,  3,  3,  3, -5,  5,  0, 
+                          0,  5, -5,  3,  3,  3,  3, -5,  5,  0, 
+                          0, 20, -5, 15,  3,  3, 15, -5, 20,  0,
+                          0,-20,-40, -5, -5, -5, -5,-40,-20,  0,
+                          0,120,-20, 20,  5,  5, 20,-20,120,  0,
+                          0,  0,  0,  0,  0,  0,  0,  0,  0,  0};
+  pcnt=0; ocnt=0;      
+  opp = opponent(player);
+  for (i=1; i<=88; i++) {
+     if (board[i]==player) pcnt=pcnt+weights[i];
+     if (board[i]==opp) ocnt=ocnt+weights[i];
+  }
+  return (pcnt - ocnt);
+}
+
+
+int NEWminmax (int player, int * board, int ply, int (* evalfn) (int, int *)) {//evalfn:addweight 或是 diffweight
+
+
+  int i, max, ntm, newscore, bestmove, * moves, * newboard;
+  int maxchoice (int, int *, int, int (*) (int, int *)); 
+  int minchoice (int, int *, int, int (*) (int, int *)); 
+  moves = FindAllMoves(player, board); /* get all legal moves for player */
+  max = LOSS - 1;  /* any legal move will exceed this score */
+
+  for (i=1; i <= moves[0]; i++) {//moves[0]存有幾個位置可以移動
+
+    newboard = copyboard(board);//準備一個複製的board準備simulate
+
+    makemove(moves[i], player, newboard);//在新盤面移動這一步看看
+    ntm = nexttoplay(newboard, player,0);//看下一個人是誰
+    if (ntm == 0) {  /* game over, so determine winner */
+         newscore = diffeval(player, newboard);
+         if (newscore > 0) newscore = WIN; /* a win for player */
+         if (newscore < 0) newscore = LOSS; /* a win for opp */
+    }
+    if (ntm == player)   /* opponent cannot move *///下一個人又是我
+       newscore = NEWmaxchoice(player, newboard, ply-1, evalfn,-2000,2000);
+    if (ntm == opponent(player))//下一個人是對方,要找min
+       newscore = NEWminchoice(player, newboard, ply-1, evalfn,-2000,2000);
+    
+    if (newscore > max) {
+        max = newscore;
+        bestmove = moves[i];  /* a better move found */
+    }
+    free(newboard);
+  }
+  free(moves);
+  return(bestmove);
+}
+
+int NEWminchoice (int player, int * board, int ply, int (* evalfn) (int, int *),int alpha,int beta) {
+  int i, min, ntm, newscore, * moves, * newboard;
+  if (ply == 0) return((* evalfn) (player, board));
+  moves =FindAllMoves(opponent(player), board);
+
+  min = beta;
+
+  for (i=1; i <= moves[0]; i++) {
+    newboard = copyboard(board);
+    makemove(moves[i], opponent(player), newboard);
+    ntm = nexttoplay(newboard, opponent(player),0);
+    if (ntm == 0) {
+         newscore = diffeval(player, newboard);
+         if (newscore > 0) newscore = WIN;
+         if (newscore < 0) newscore = LOSS;
+    }
+    if (ntm == player) 
+       newscore = NEWmaxchoice(player, newboard, ply-1, evalfn,alpha,min);
+    if (ntm == opponent(player))
+       newscore = NEWminchoice(player, newboard, ply-1, evalfn,alpha,min);
+    if (newscore < min) min = newscore;
+    if(min<=alpha)return(min) ;
+    free(newboard);
+  }
+  free(moves);
+  return(min);
+}
+
+int NEWmaxchoice (int player, int * board, int ply, int (* evalfn) (int, int *),int alpha,int beta) {
+
+  int i, max, ntm, newscore, * moves, * newboard;
+  int minchoice (int, int *, int, int (*) (int, int *)); 
+  if (ply == 0) return((* evalfn) (player, board));//向前看的步數看完了，去看看到那裡的時候，盤面好不好
+  moves = FindAllMoves(player, board);
+  max = alpha;
+
+  for (i=1; i <= moves[0]; i++) {
+    newboard = copyboard(board);
+    makemove(moves[i], player, newboard);
+    ntm = nexttoplay(newboard, player,0);
+    if (ntm == 0) {
+         newscore = diffeval(player, newboard);
+         if (newscore > 0) newscore = WIN;
+         if (newscore < 0) newscore = LOSS;
+    }
+    if (ntm == player) 
+       newscore = NEWmaxchoice(player, newboard, ply-1, evalfn,max,beta);
+    if (ntm == opponent(player))
+       newscore = NEWminchoice(player, newboard, ply-1, evalfn,max,beta);
+    if (newscore > max) max = newscore;
+    if(max>=beta)return(max) ;
+    free(newboard);
+  }
+  free(moves);
+  return(max);
+}
+
+
 
 //projection to  maxweighteddiffstrategy
 //ai下棋
 int AI(int player, int *board)
-{
+{   /*
     int r, *moves;
     moves = FindAllMoves(player, board);
     r = moves[(rand() % moves[0]) + 1];
     free(moves);
-    return (r);
+    return (r);*/
+    return(NEWminmax(player, board,9, weighteddiffeval));
 }
 
 //把所有可以移動的位置找出來並存在return array moves中
@@ -185,7 +323,7 @@ int *initialboard(void)
     return board;
 }
 //算下一個要玩的人是誰
-int nexttoplay(int *board, int Nowplayer)
+int nexttoplay(int *board, int Nowplayer,int printflag)
 {
     int NowOpp;
     NowOpp = opponent(Nowplayer); //換人下
@@ -194,7 +332,7 @@ int nexttoplay(int *board, int Nowplayer)
     if (anylegalmove(Nowplayer, board))
     { //會到這裡表示對方不可以下，再換我下
 
-        printf("%c has no moves and must pass.\n", nameof(NowOpp));
+        if (printflag) printf("%c has no moves and must pass.\n", nameof(NowOpp));
         return Nowplayer;
     }
     return 0; //沒人可以下，終局

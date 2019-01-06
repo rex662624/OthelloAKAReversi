@@ -38,6 +38,8 @@ int AI(int, int *);
 int *initialboard(void);
 int * copyboard (int * board);
 int diffeval (int player, int * board);
+int mobility (int player, int * board);
+int weighteddiffeval (int player, int * board);
 //====================此處放置redundant code=====
 
 //=========================
@@ -102,6 +104,35 @@ int human(int player, int *board)
     //AI(player,board);
 }
 //================================AI
+int mobility (int player, int * board){
+  
+  int w1=1,w2=1;
+  int move,moves=0,total=0;
+  
+  //if(iteration<15){
+  for (move=11; move<=88; move++){ 
+    if (LegalPosition(move, player, board)) {
+      moves++;
+      total++;
+    }
+    if (LegalPosition(move, opponent(player), board)) {
+      moves--;
+      total++;
+    }
+  }
+
+    moves*=100;
+    moves/=total;
+  //}
+    //moves-=100;
+  int num2 = weighteddiffeval (player, board);
+  //if(moves<0)
+  //printf("%d,%d\n",moves,num2);
+  return (moves*w1+num2*w2);
+
+
+}
+
 int diffeval (int player, int * board) { /* utility is measured */
   int i, ocnt, pcnt, opp;                /* by the difference in */
   pcnt=0; ocnt = 0;                      /* number of pieces */
@@ -245,7 +276,8 @@ int AI(int player, int *board)
     r = moves[(rand() % moves[0]) + 1];
     free(moves);
     return (r);*/
-    return(NEWminmax(player, board,6, weighteddiffeval));
+    //Modify here
+    return(NEWminmax(player, board,8, mobility));
 }
 
 //把所有可以移動的位置找出來並存在return array moves中

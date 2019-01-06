@@ -191,7 +191,9 @@ int maxdiffstrategy5(int, int *);
 int maxweighteddiffstrategy1(int, int *);
 int maxweighteddiffstrategy3(int, int *);
 int maxweighteddiffstrategy5(int, int *);
-
+int mobility (int player, int * board);
+int mobility2 (int player, int * board);
+int weighteddiffeval (int player, int * board);
 void * STRATEGIES[9][4] = {
    {"human", "human", human},
    {"random", "random", randomstrategy},
@@ -207,7 +209,7 @@ void * STRATEGIES[9][4] = {
    {NULL, NULL, NULL}
  };
 
-
+int iteration=0;
 
 /***********************************************************************/
 /************************* Auxiliary Functions *************************/
@@ -524,6 +526,35 @@ int randomstrategy(int player, int * board) {
    of terminal boards in a minmax search.
 */
 
+//================================
+int mobility (int player, int * board){
+  
+  int w1=1,w2=1;
+  int move,moves=0,total=0;
+  
+  //if(iteration<15){
+  for (move=11; move<=88; move++){ 
+    if (legalp(move, player, board)) {
+      moves++;
+      total++;
+    }
+    if (legalp(move, opponent(player), board)) {
+      moves--;
+      total++;
+    }
+  }
+
+    moves*=100;
+    moves/=total;
+  //}
+    //moves-=100;
+  int num2 = weighteddiffeval (player, board);
+  //if(moves<0)
+  //printf("%d,%d\n",moves,num2);
+  return (moves*w1+num2*w2);
+
+
+}
 //第一種審盤方式：直接用分數相減
 int diffeval (int player, int * board) { /* utility is measured */
   int i, ocnt, pcnt, opp;                /* by the difference in */
@@ -831,7 +862,7 @@ int maxdiffstrategy5(int player, int * board) { /* 5 ply lookahead */
   return(minmax(player, board, 5, diffeval));
 }
 
-
+//HEREHERE
 /* use weigteddiffstrategy as utility function */
 
 int maxweighteddiffstrategy1(int player, int * board) {
@@ -839,12 +870,15 @@ int maxweighteddiffstrategy1(int player, int * board) {
 }
 
 int maxweighteddiffstrategy3(int player, int * board) {
-   return(minmax(player, board,5, weighteddiffeval));
+    //iteration++;
+    //printf("iteration:%d\n",iteration);
+   return(minmax(player, board,6,mobility));
 }
 
 //myAI
 int maxweighteddiffstrategy5(int player, int * board) {
-   return(NEWminmax(player, board,8, weighteddiffeval));
+   //return(minmax(player, board,6,mobility2));
+   return(NEWminmax(player, board,9, weighteddiffeval));
 }
 
 /******************************************************************

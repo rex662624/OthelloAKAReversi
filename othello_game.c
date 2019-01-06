@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 
 /**************************************************
 *   border有做padding,所以變成10*10                 *
@@ -82,12 +83,22 @@ void othello(int (*blstrategy)(int, int *), int (*whstrategy)(int, int *))
 //人類下棋
 int human(int player, int *board)
 {
-
+    /*
     int move;
     printf("your turn to move:");
     scanf("%d", &move);
     return move;
-
+    */
+    int move;
+    char* moveHuman=(char*) malloc(10);
+    printf("your turn to move:");
+    scanf("%s",moveHuman);
+    while(strlen(moveHuman)!=2){
+        printf("your turn to move:");
+        scanf("%s",moveHuman);
+    }
+    move =(moveHuman[1]-48)*10+moveHuman[0]-64;
+    return move;
     //AI(player,board);
 }
 //================================AI
@@ -234,7 +245,7 @@ int AI(int player, int *board)
     r = moves[(rand() % moves[0]) + 1];
     free(moves);
     return (r);*/
-    return(NEWminmax(player, board,9, weighteddiffeval));
+    return(NEWminmax(player, board,6, weighteddiffeval));
 }
 
 //把所有可以移動的位置找出來並存在return array moves中
@@ -264,7 +275,7 @@ void getmove(int (*strategy)(int, int *), int player, int *board)
     move = (*strategy)(player, board); //下子
     if (LegalPosition(move, player, board))
     { //如果他下的是正常的子
-        printf("%c moves to %d\n", nameof(player), move);
+        printf("%c moves to %d (%c%d)\n", nameof(player), move,'A'+(move%10)-1,move/10);
         makemove(move, player, board);
     }
     else //如果他下的不是正常的位置 重下

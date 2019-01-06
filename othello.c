@@ -860,7 +860,7 @@ void getmove (int (* strategy) (int, int *), int player, int * board,
   if (printflag) printboard(board);
   move = (* strategy)(player, board);//下子
   if (legalp(move, player, board)) {//算是不是legal move
-     if (printflag) printf("%c moves to %d\n", nameof(player), move);
+     if (printflag) printf("%c moves to %d (%c%d)\n", nameof(player), move,'A'+(move%10)-1,move/10);
      makemove(move, player, board);
   }
   else {
